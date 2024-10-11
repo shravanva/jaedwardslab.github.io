@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, url_for
+from flask import Flask, request, jsonify, render_template
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -7,60 +7,51 @@ import os
 
 app = Flask(__name__)
 
-# Ensure directories for uploads and static files exist
-os.makedirs('uploads', exist_ok=True)
-os.makedirs('static', exist_ok=True)
+# Folder to save uploaded files
+UPLOAD_FOLDER = 'uploads'
+RESULT_FOLDER = 'results'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
-    if request.method == 'POST':
-        try:
-            # Retrieve uploaded files
-            phenotype_file = request.files.get('phenotype_file')
-            allele_file = request.files.get('allele_file')
-            
-            if not phenotype_file or not allele_file:
-                return jsonify({'success': False, 'error': 'Both files are required!'})
-
-            # Save files temporarily
-            phenotype_filepath = os.path.join("uploads", phenotype_file.filename)
-            allele_filepath = os.path.join("uploads", allele_file.filename)
-            phenotype_file.save(phenotype_filepath)
-            allele_file.save(allele_filepath)
-
-            # Load data using pandas
-            pheno = pd.read_csv(phenotype_filepath, sep="\t")
-            allele_data = pd.read_csv(allele_filepath, sep=",", quotechar='"')
-
-            # Data processing and plotting code
-            allele_data.rename(columns={'strain': 'Accession_ID', 'alt': 'alt'}, inplace=True)
-            snp_pheno = pd.merge(pheno, allele_data[['Accession_ID', 'alt']], on='Accession_ID', how='left')
-            snp_pheno['allele'] = np.where(snp_pheno['alt'] == 'C', 'minor', 'major')
-            snp_pheno['allele'].fillna('major', inplace=True)
-            snp_pheno['treatment'] = pd.Categorical(snp_pheno['treatment'], categories=['Mock', 'ABA'], ordered=True)
-
-            # Plotting code
-            plt.figure(figsize=(10, 6))
-            sns.violinplot(data=snp_pheno, x='treatment', y='Ave_RLN', hue='treatment', split=True, inner=None)
-            sns.boxplot(data=snp_pheno, x='treatment', y='Ave_RLN', width=0.05, showcaps=False,
-                        boxprops={'facecolor': 'white', 'edgecolor': 'black', 'linewidth': 2},
-                        meanprops={'color': 'red', 'linewidth': 2},
-                        palette={'Mock': 'orange', 'ABA': 'skyblue'})
-
-            plot_path = os.path.join('static', 'plot1.jpg')
-            plt.savefig(plot_path, format='jpeg')
-            plt.close()
-
-            return jsonify({'success': True, 'image_url': url_for('static', filename='plot1.jpg')})
-
-        except Exception as e:
-            return jsonify({'success': False, 'error': f'Error processing files: {str(e)}'})
-
     return render_template('index.html')
 
-@app.route('/results')
-def results():
-    return render_template('results.html')
+@app.route('/', methods=['POST'])
+def upload_files():
+    if 'phenotype_file' not in request.files or 'allele_file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file part'})
+
+    phenotype_file = request.files['phenotype_file']
+    allele_file = request.files['allele_file']
+
+    if phenotype_file.filename == '' or allele_file.filename == '':
+        return jsonify({'success': False, 'error': 'No selected file'})
+
+    # Save the uploaded files
+    pheno_path = os.path.join(UPLOAD_FOLDER, phenotype_file.filename)
+    allele_path = os.path.join(UPLOAD_FOLDER, allele_file.filename)
+    phenotype_file.save(pheno_path)
+    allele_file.save(allele_path)
+
+    # Call your existing data processing code
+    try:
+        pheno = pd.read_csv(pheno_path, sep="\t")
+        allele_data = pd.read_csv(allele_path, sep=",", quotechar='"')
+
+        # Your data processing code goes here
+        # (Make sure to modify paths for saving plots)
+        
+        # Example of generating a plot and saving it
+        plt.figure(figsize=(10, 6))
+        sns.violinplot(data=pheno, x='treatment', y='Ave_RLN')  # Simplified example
+        result_image_path = os.path.join(RESULT_FOLDER, 'result_plot.jpeg')
+        plt.savefig(result_image_path)  # Save plot as JPEG
+        plt.close()
+
+        return jsonify({'success': True, 'image_url': result_image_path})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
