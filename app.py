@@ -7,14 +7,15 @@ import os
 
 app = Flask(__name__)
 
-# Ensure the uploads directory exists
+# Ensure directories for uploads and static files exist
 os.makedirs('uploads', exist_ok=True)
+os.makedirs('static', exist_ok=True)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         try:
-            # Retrieve the uploaded files
+            # Retrieve uploaded files
             phenotype_file = request.files.get('phenotype_file')
             allele_file = request.files.get('allele_file')
             
@@ -27,37 +28,39 @@ def index():
             phenotype_file.save(phenotype_filepath)
             allele_file.save(allele_filepath)
 
-            # Debug: Check if the files were saved correctly
-            print(f"Phenotype file saved at: {phenotype_filepath}")
-            print(f"Allele file saved at: {allele_filepath}")
-
             # Load data using pandas
             pheno = pd.read_csv(phenotype_filepath, sep="\t")
             allele_data = pd.read_csv(allele_filepath, sep=",", quotechar='"')
 
-            # Debug: Print some of the data to verify it's loaded
-            print("Phenotype Data Sample:")
-            print(pheno.head())
-            print("Allele Data Sample:")
-            print(allele_data.head())
+            # Data processing and plotting code
+            allele_data.rename(columns={'strain': 'Accession_ID', 'alt': 'alt'}, inplace=True)
+            snp_pheno = pd.merge(pheno, allele_data[['Accession_ID', 'alt']], on='Accession_ID', how='left')
+            snp_pheno['allele'] = np.where(snp_pheno['alt'] == 'C', 'minor', 'major')
+            snp_pheno['allele'].fillna('major', inplace=True)
+            snp_pheno['treatment'] = pd.Categorical(snp_pheno['treatment'], categories=['Mock', 'ABA'], ordered=True)
 
-            # Data processing and plotting code (simplified for testing)
+            # Plotting code
             plt.figure(figsize=(10, 6))
-            sns.violinplot(data=pheno, x=pheno.columns[0], y=pheno.columns[1])
+            sns.violinplot(data=snp_pheno, x='treatment', y='Ave_RLN', hue='treatment', split=True, inner=None)
+            sns.boxplot(data=snp_pheno, x='treatment', y='Ave_RLN', width=0.05, showcaps=False,
+                        boxprops={'facecolor': 'white', 'edgecolor': 'black', 'linewidth': 2},
+                        meanprops={'color': 'red', 'linewidth': 2},
+                        palette={'Mock': 'orange', 'ABA': 'skyblue'})
+
             plot_path = os.path.join('static', 'plot1.jpg')
             plt.savefig(plot_path, format='jpeg')
-
-            # Debug: Check if the image was saved correctly
-            print(f"Plot saved at: {plot_path}")
+            plt.close()
 
             return jsonify({'success': True, 'image_url': url_for('static', filename='plot1.jpg')})
 
         except Exception as e:
-            # Debug: Print exception details
-            print(f"Error: {e}")
             return jsonify({'success': False, 'error': f'Error processing files: {str(e)}'})
 
     return render_template('index.html')
+
+@app.route('/results')
+def results():
+    return render_template('results.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
