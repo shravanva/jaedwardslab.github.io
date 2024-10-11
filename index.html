@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dr. JA Edwards Lab - Bioinformatics Website</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <header>
@@ -23,12 +23,12 @@
         </section>
 
         <section class="upload-section">
-            <form id="upload-form" action="/" method="POST" enctype="multipart/form-data">
+            <form id="upload-form">
                 <label for="phenotype-file">Upload Phenotype Data:</label>
-                <input type="file" name="phenotype_file" id="phenotype-file" accept=".txt,.csv" required>
+                <input type="file" id="phenotype-file" accept=".txt,.csv" required>
 
                 <label for="allele-file">Upload Allele Data:</label>
-                <input type="file" name="allele_file" id="allele-file" accept=".txt,.csv" required>
+                <input type="file" id="allele-file" accept=".txt,.csv" required>
 
                 <button type="submit">Submit Data</button>
             </form>
@@ -37,39 +37,36 @@
         <section class="result-section" id="result-section">
             <h3>Results</h3>
             <p id="results-message">Upload files to view results.</p>
-            <img id="result-image" alt="Result Image" style="display: none; max-width: 100%;">
+            <img id="result-image" alt="Result Image" style="display: none;">
         </section>
     </main>
 
     <footer>
-        <p>&copy; 2024 Dr. JA Edwards Lab. All rights reserved.</p>
+        <p>&copy; 2024 Dr. JA Edwards and Dr. Song Lab. All rights reserved.</p>
     </footer>
 
     <script>
-        document.getElementById('upload-form').addEventListener('submit', function(event) {
-            event.preventDefault(); // Prevent default form submission
-            
-            const formData = new FormData(this);
+        document.getElementById('upload-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const formData = new FormData();
+            formData.append('phenotype_file', document.getElementById('phenotype-file').files[0]);
+            formData.append('allele_file', document.getElementById('allele-file').files[0]);
 
-            fetch('/', {
-                method: 'POST',
-                body: formData,
-            })
-            .then(response => response.json())
-            .then(data => {
+            try {
+                const response = await fetch('/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
                 if (data.success) {
-                    document.getElementById('results-message').textContent = 'Results generated successfully!';
-                    const resultImage = document.getElementById('result-image');
-                    resultImage.src = data.image_url;
-                    resultImage.style.display = 'block';
+                    window.location.href = `/results?image_url=${encodeURIComponent(data.image_url)}`;
                 } else {
-                    document.getElementById('results-message').textContent = 'Error: ' + data.error;
+                    alert(data.error || 'An unknown error occurred while processing the files.');
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('Error:', error);
-                document.getElementById('results-message').textContent = 'An error occurred while processing your request.';
-            });
+                alert('An error occurred while submitting the form.');
+            }
         });
     </script>
 </body>
