@@ -2,72 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dr. JA Edwards Lab - Bioinformatics Website</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <title>Upload Phenotype and SNP Data</title>
 </head>
 <body>
-    <header>
-        <h1>Dr. JA Edwards Lab</h1>
-        <nav>
-            <a href="#">Home</a>
-            <a href="#">About</a>
-            <a href="#">Contact</a>
-        </nav>
-    </header>
+    <h1>Upload Phenotype and SNP Data Files</h1>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <label for="pheno_file">Upload Phenotype Data (TXT file):</label>
+        <input type="file" name="pheno_file" required><br><br>
 
-    <main>
-        <section class="intro">
-            <h2>Welcome to Our Bioinformatics Analysis Tool</h2>
-            <p>Upload phenotype and allele data files to generate visual insights into genetic and phenotypic relationships.</p>
-        </section>
+        <label for="snp_files">Upload SNP Data Files (CSV files):</label>
+        <input type="file" name="snp_files" multiple required><br><br>
 
-        <section class="upload-section">
-            <form id="upload-form">
-                <label for="phenotype-file">Upload Phenotype Data:</label>
-                <input type="file" id="phenotype-file" accept=".txt,.csv" required>
-
-                <label for="allele-file">Upload Allele Data:</label>
-                <input type="file" id="allele-file" accept=".txt,.csv" required>
-
-                <button type="submit">Submit Data</button>
-            </form>
-        </section>
-
-        <section class="result-section" id="result-section">
-            <h3>Results</h3>
-            <p id="results-message">Upload files to view results.</p>
-            <img id="result-image" alt="Result Image" style="display: none;">
-        </section>
-    </main>
-
-    <footer>
-        <p>&copy; 2024 Dr. JA Edwards and Dr. Song Lab. All rights reserved.</p>
-    </footer>
-
-    <script>
-        document.getElementById('upload-form').addEventListener('submit', async function(event) {
-            event.preventDefault();
-            const formData = new FormData();
-            formData.append('phenotype_file', document.getElementById('phenotype-file').files[0]);
-            formData.append('allele_file', document.getElementById('allele-file').files[0]);
-
-            try {
-                const response = await fetch('/', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                if (data.success) {
-                    window.location.href = `/results?image_url=${encodeURIComponent(data.image_url)}`;
-                } else {
-                    alert(data.error || 'An unknown error occurred while processing the files.');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while submitting the form.');
-            }
-        });
-    </script>
+        <input type="submit" value="Submit">
+    </form>
 </body>
 </html>
